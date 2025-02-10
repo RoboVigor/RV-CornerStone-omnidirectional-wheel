@@ -70,7 +70,7 @@ int16_t Protocol_Pack(Node_Type *node, uint16_t id) {
     // Frame SEQ
     node->sendBuf[index++]++;
 
-    // Header CRC8
+    // Header CRC8  !!! 这里为什么can去掉了CRC8？ 有待考究 包括在 unpack中相应部分只写can的0x500会进行CRC8的验证（目前已经修改为完全的can node
     if (node->bridgeType == USART_BRIDGE) {
         node->sendBuf[index++] = Get_CRC8_Check_Sum(node->sendBuf, PROTOCOL_HEADER_SIZE - 1);
     }
@@ -139,7 +139,7 @@ void Protocol_Unpack(Node_Type *node, uint8_t byte) {
     case STEP_SEQ: {
         node->receiveSeq            = byte;
         node->packet[node->index++] = byte;
-        if (node->bridgeType == USART_BRIDGE || (node->deviceID == 0x500)) {
+        if (node->bridgeType == USART_BRIDGE || ((node->deviceID > 0x499) && (node->deviceID < 0x505))) {
             node->step = STEP_CRC8;
         } else {
             node->step = STEP_ID_LOW;
