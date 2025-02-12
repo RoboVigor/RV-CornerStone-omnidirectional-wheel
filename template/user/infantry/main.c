@@ -42,6 +42,7 @@ int main(void) {
     Protocol_Init(&Node_Judge, &ProtocolData);
     Protocol_Init(&Node_Host, &ProtocolData);
     Protocol_Init(&Node_Board, &ProtocolData);
+    Protocol_Init(&Node_SuperCap, &ProtocolData);
 
     // 硬件配置
     BSP_CAN_Init();
@@ -118,6 +119,7 @@ int main(void) {
     // 总线设置
     Bridge_Bind(&BridgeData, USART_BRIDGE, 7, &Node_Host);
     Bridge_Bind(&BridgeData, USART_BRIDGE, 8, &Node_Judge);
+    Bridge_Bind(&BridgeData, CAN1_BRIDGE, 0x500, &Node_SuperCap);
 
     // 陀螺仪
     Gyroscope_Init(&Gyroscope_EulerData, 300); // 初始化

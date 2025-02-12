@@ -77,7 +77,7 @@ __HANDLE_EXT uint8_t          PigeonCurrent, PigeonVoltage, PigeonEnergy, Pigeon
 
 // 通讯协议
 __HANDLE_EXT ProtocolData_Type ProtocolData;
-__HANDLE_EXT Node_Type         Node_Judge, Node_Host, Node_Board;
+__HANDLE_EXT Node_Type         Node_Judge, Node_Host, Node_Board, Node_SuperCap;
 
 // 弹舱盖舵机
 __HANDLE_EXT PWM_Type PWM_Magazine_Servo;
