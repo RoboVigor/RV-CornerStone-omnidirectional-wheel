@@ -25,6 +25,7 @@
 #include "Driver_Bridge.h"
 #include "Driver_Magic.h"
 #include "Driver_Fsm.h"
+#include "Driver_Vofa.h"
 
 #ifdef __HANDLE_GLOBALS
 #define __HANDLE_EXT
