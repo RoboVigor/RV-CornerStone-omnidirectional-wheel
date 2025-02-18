@@ -37,13 +37,13 @@ typedef struct {
 } GraphicData_Type;
 
 typedef struct {
-    uint32_t debug0;
-    uint32_t debug1;
-    uint32_t debug2;
-    uint32_t debug3;
-    uint32_t debug4;
-    uint32_t debug5;
-    uint32_t debug6;
+    float debug0;
+    float debug1;
+    float debug2;
+    float debug3;
+    float debug4;
+    float debug5;
+    float debug6;
     uint32_t vofaTail;
 } DebugData_Type;
 

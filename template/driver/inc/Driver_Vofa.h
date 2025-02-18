@@ -12,7 +12,8 @@
 #include "handle.h"
 
 #define vofaTail_t 0x807F
-
+/* @note 注意此协议数据为十六进制float，debug赋值时记得强转为float
+*/
 void Vofa_Send(uint16_t frequency, uint16_t heapDeth, Node_Type * node, uint32_t commandID);
 void Task_Vofa_Send(void * Parameters);
 #endif 
