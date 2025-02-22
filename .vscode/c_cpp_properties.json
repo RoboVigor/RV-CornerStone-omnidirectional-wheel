@@ -5,6 +5,9 @@
       "includePath": [
         "${workspaceFolder}/**"
       ],
+      "defines": [
+        "STM32F427_437xx"
+      ],
       "compilerPath": "D:/Program Files (x86)/mingw64/bin/gcc.exe",
       "cStandard": "${default}",
       "cppStandard": "${default}",

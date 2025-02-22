@@ -31,13 +31,16 @@ float PID_Calculate(PID_Type *pid, float target, float feedback) {
     pid->output_P = pid->p * pid->error;
 
     pid->output_I += pid->i * pid->error;
+    if (pid->maxOutput_I > 0) {
     MIAO(pid->output_I, -(pid->maxOutput_I), pid->maxOutput_I);
-
+    }
+    
     pid->output_D = pid->d * (pid->error - pid->lastError);
 
     pid->output = (pid->output_P + pid->output_I + pid->output_D);
-
+    if(pid->maxOutput > 0) {
     MIAO(pid->output, -(pid->maxOutput), pid->maxOutput);
+    }
 
     pid->lastError = pid->error;
 

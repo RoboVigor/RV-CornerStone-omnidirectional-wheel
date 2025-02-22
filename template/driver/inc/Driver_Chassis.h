@@ -52,6 +52,11 @@ void Chassis_Init(ChassisData_Type *ChassisData);
 void Chassis_Update(ChassisData_Type *ChassisData, float XSpeed, float YSpeed, float WSpeed);
 
 /**
+ * @brief 更新扭矩前馈
+ */
+void Chassis_Updata_FT(ChassisData_Type * cd, float Fx, float Fy, float T);
+
+/**
  * @brief 修正旋转后底盘的前进方向
  * @param angle 期望的前进方向
  */

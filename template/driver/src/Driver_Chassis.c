@@ -25,6 +25,12 @@ void Chassis_Update(ChassisData_Type *cd, float vx, float vy, float vw) {
     cd->vw = vw;
 }
 
+void Chassis_Updata_FT(ChassisData_Type * cd, float Fx, float Fy, float T){
+    cd->Fx = Fx;
+    cd->Fy = Fy;
+    cd->T  = T;
+}
+
 void Chassis_Fix(ChassisData_Type *cd, float angle) {
     float sinYaw = vegsin(angle); // 1
     float cosYaw = vegcos(angle); // 0

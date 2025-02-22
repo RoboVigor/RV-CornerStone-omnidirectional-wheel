@@ -245,6 +245,7 @@ void Task_Chassis(void *Parameters) {
     int   filterp        = 0;
     float power          = 0;
     float powerBuffer    = 0;
+    int16_t realMotorSpeed[4] = {0,0,0,0};
 
     // 小陀螺
     float   swingAngle       = 0;
@@ -258,11 +259,16 @@ void Task_Chassis(void *Parameters) {
     PID_Init(&PID_Follow_Angle, 1, 0, 0, 900, 100);
     PID_Init(&PID_Follow_Speed, 3, 6, 0, 900, 0);
 
-    // 麦轮速度PID
-    PID_Init(&PID_LFCM, 20, 0, 0, 6000, 1200);
-    PID_Init(&PID_LBCM, 20, 0, 0, 6000, 1200);
-    PID_Init(&PID_RBCM, 20, 0, 0, 6000, 1200);
-    PID_Init(&PID_RFCM, 20, 0, 0, 6000, 1200);
+    // 速度环PID
+    PID_Init(&PID_LFCM, 2, 0, 0, 6000, 0);
+    PID_Init(&PID_LBCM, 2, 0, 0, 6000, 0);
+    PID_Init(&PID_RBCM, 2, 0, 0, 6000, 0);
+    PID_Init(&PID_RFCM, 2, 0, 0, 6000, 0);
+
+    //扭矩前馈PID
+    PID_Init(&PID_Fx, 20, 0, 1, 0, 0);
+    PID_Init(&PID_Fy, 20, 0, 1, 0, 0);
+    PID_Init(&PID_T, 20, 0, 1, 0, 0);
 
     // 初始化底盘
     Chassis_Init(&ChassisData);
@@ -281,6 +287,10 @@ void Task_Chassis(void *Parameters) {
         motorSpeed  = Motor_Yaw.speed * RPM2RPS;                       // 电机角速度
         power       = ProtocolData.powerHeatData.chassis_power;        // 裁判系统功率
         powerBuffer = ProtocolData.powerHeatData.chassis_power_buffer; // 裁判系统功率缓冲
+        realMotorSpeed[0] = Motor_LF.speed *RPM2RPS;
+        realMotorSpeed[1] = Motor_LB.speed *RPM2RPS;
+        realMotorSpeed[2] = Motor_RB.speed *RPM2RPS;
+        realMotorSpeed[3] = Motor_RF.speed *RPM2RPS;
 
         // 视觉专属follow PID
         if (PsAimEnabled) {
@@ -433,11 +443,19 @@ void Task_Chassis(void *Parameters) {
 
         // 麦轮解算及限速
         //targetPower = 70.0 - WANG(30 - ChassisData.powerBuffer, 0.0, 10.0) / 10.0 * 70.0; // 设置目标功率
-        targetPower = 100.0 * (1 - WANG(60.0 - ChassisData.powerBuffer, 0.0, 40.0) / 40.0); // 设置目标功率 ?
+        // targetPower = 100.0 * (1 - WANG(60.0 - ChassisData.powerBuffer, 0.0, 40.0) / 40.0); // 设置目标功率 ?
 
         Chassis_Update(&ChassisData, vx, vy, vwRamp); // 更新麦轮转速
         Chassis_Fix(&ChassisData, motorAngle);        // 修正旋转后底盘的前进方向
         Chassis_Calculate_Rotor_Speed(&ChassisData);  // 麦轮解算
+
+
+        Chassis_Calculate_Real_Speed(&ChassisData, realMotorSpeed);
+        PID_Calculate(&PID_Fx, vx, ChassisData.realvx);
+        PID_Calculate(&PID_Fy, vy, ChassisData.realvy);
+        PID_Calculate(&PID_T, vwRamp, ChassisData.realvw);
+        Chassis_Updata_FT(&ChassisData, PID_Fx.output, PID_Fy.output, PID_T.output);
+        Chassis_Calculate_Rotor_Torgue(&ChassisData);
 
         //回顾代码猜测下段转速和功率限制导致了平移出现问题。（因为慢速时偏离程度不大）
         // if (FastmoveMode == 1) {
@@ -453,7 +471,7 @@ void Task_Chassis(void *Parameters) {
         PID_Calculate(&PID_RBCM, ChassisData.rotorSpeed[2], Motor_RB.speed * RPM2RPS);
         PID_Calculate(&PID_RFCM, ChassisData.rotorSpeed[3], Motor_RF.speed * RPM2RPS);
 
-        // 输出电流值到电调
+        // 输出电流值到电调 功率限制待修改
         Motor_LF.input = PID_LFCM.output * ChassisData.powerScale;
         Motor_LB.input = PID_LBCM.output * ChassisData.powerScale;
         Motor_RB.input = PID_RBCM.output * ChassisData.powerScale;
