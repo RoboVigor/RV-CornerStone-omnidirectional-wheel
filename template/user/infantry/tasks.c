@@ -236,7 +236,9 @@ void Task_Chassis(void *Parameters) {
     float vw             = 0;
     float vwRamp         = 0;
     float vwRampProgress = 0;
-    float targetPower;
+    float targetPower    = 0;
+    float motorCurrentOutput[4];
+    int16_t MCO_With_PowerLimit[4];
 
     // 反馈值
     float motorAngle, motorSpeed;
@@ -245,7 +247,7 @@ void Task_Chassis(void *Parameters) {
     int   filterp        = 0;
     float power          = 0;
     float powerBuffer    = 0;
-    int16_t realMotorSpeed[4] = {0,0,0,0};
+    float realMotorSpeed[4] = {0,0,0,0};
 
     // 小陀螺
     float   swingAngle       = 0;
@@ -287,6 +289,7 @@ void Task_Chassis(void *Parameters) {
         motorSpeed  = Motor_Yaw.speed * RPM2RPS;                       // 电机角速度
         power       = ProtocolData.powerHeatData.chassis_power;        // 裁判系统功率
         powerBuffer = ProtocolData.powerHeatData.chassis_power_buffer; // 裁判系统功率缓冲
+        targetPower = ProtocolData.gameRobotstatus.chassis_power_limit;// 裁判系统功率限制
         realMotorSpeed[0] = Motor_LF.speed *RPM2RPS;
         realMotorSpeed[1] = Motor_LB.speed *RPM2RPS;
         realMotorSpeed[2] = Motor_RB.speed *RPM2RPS;
@@ -457,25 +460,24 @@ void Task_Chassis(void *Parameters) {
         Chassis_Updata_FT(&ChassisData, PID_Fx.output, PID_Fy.output, PID_T.output);
         Chassis_Calculate_Rotor_Torgue(&ChassisData);
 
-        //回顾代码猜测下段转速和功率限制导致了平移出现问题。（因为慢速时偏离程度不大）
-        // if (FastmoveMode == 1) {
-        //     ;
-        // } else {
-        //     Chassis_Limit_Rotor_Speed(&ChassisData, 800);                                 // 设置转子速度上限 (rad/s)
-        //     Chassis_Limit_Power(&ChassisData, targetPower, power, powerBuffer, interval); // 根据功率限幅
-        // }
-
         // 计算输出电流PID
         PID_Calculate(&PID_LFCM, ChassisData.rotorSpeed[0], Motor_LF.speed * RPM2RPS);
         PID_Calculate(&PID_LBCM, ChassisData.rotorSpeed[1], Motor_LB.speed * RPM2RPS);
         PID_Calculate(&PID_RBCM, ChassisData.rotorSpeed[2], Motor_RB.speed * RPM2RPS);
         PID_Calculate(&PID_RFCM, ChassisData.rotorSpeed[3], Motor_RF.speed * RPM2RPS);
+        motorCurrentOutput[0] = PID_LFCM.output * CurrentMap_C620;
+        motorCurrentOutput[1] = PID_LBCM.output * CurrentMap_C620;
+        motorCurrentOutput[2] = PID_RBCM.output * CurrentMap_C620;
+        motorCurrentOutput[3] = PID_RFCM.output * CurrentMap_C620;
 
-        // 输出电流值到电调 功率限制待修改
-        Motor_LF.input = PID_LFCM.output * ChassisData.powerScale;
-        Motor_LB.input = PID_LBCM.output * ChassisData.powerScale;
-        Motor_RB.input = PID_RBCM.output * ChassisData.powerScale;
-        Motor_RF.input = PID_RFCM.output * ChassisData.powerScale;
+        Chassis_Current_Output_Integrate(motorCurrentOutput, &ChassisData);
+        Chassis_Calculate_Power_Limit(motorCurrentOutput, MCO_With_PowerLimit, realMotorSpeed, targetPower);
+
+        // 输出电流值到电调 功率限制已修改完成
+        Motor_LF.input = MCO_With_PowerLimit[0];
+        Motor_LB.input = MCO_With_PowerLimit[1];
+        Motor_RB.input = MCO_With_PowerLimit[2];
+        Motor_RF.input = MCO_With_PowerLimit[3];
 
         // 调试信息
         // DebugData.debug1 = vx * 1000;

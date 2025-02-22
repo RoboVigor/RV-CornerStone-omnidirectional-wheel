@@ -58,6 +58,7 @@
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
   "files.associations": {
     "config.h": "c",
-    "handle.h": "c"
+    "handle.h": "c",
+    "default_config.h": "c"
   }
 }

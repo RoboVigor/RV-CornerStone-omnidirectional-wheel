@@ -11,8 +11,10 @@
 
 typedef struct {
     // 转子转速
-    int16_t rotorSpeed[4];
-    int16_t rotorTorgue[4];
+    float rotorSpeed[4];
+    // 转矩
+    float rotorTorgue[4];
+
     float   vx;
     float   vy;
     float   vw;
@@ -95,4 +97,22 @@ void Chassis_Scale_Rotor_Speed(ChassisData_Type *ChassisData, float scale);
  * @param interval       任务周期
  */
 void Chassis_Limit_Power(ChassisData_Type *cd, float targetPower, float referencePower, float referencePowerBuffer, float interval);
+
+/**
+ * @brief 整合速度环pid的output和扭矩前馈
+ * 
+ * @param motorCurrentOutput  电流输出，速度环在调用此函数前需加入到该变量
+ * @param cd    扭矩前馈
+ */
+void Chassis_Current_Output_Integrate(float *motorCurrentOutput, ChassisData_Type* cd);
+
+/**
+ * @brief 电流衰减法限制功率
+ * 
+ * @param motorCurrentOutput    整合完的电流输出
+ * @param MCO_With_PowerLimit   经过功率限制后的电流输出
+ * @param realMotorSpeed        运动学正解算出的电机转子角速度
+ * @param targetPower           裁判系统的功率限制值
+ */
+void Chassis_Calculate_Power_Limit(float* motorCurrentOutput, int16_t* MCO_With_PowerLimit, float *realMotorSpeed, float targetPower);
 #endif

@@ -6,7 +6,10 @@
         "${workspaceFolder}/**"
       ],
       "defines": [
-        "STM32F427_437xx"
+        "STM32F427_437xx",
+        "__CC_ARM",
+        "__TARGET_FPU_VFP",
+        "ARM_MATH_CM4"
       ],
       "compilerPath": "D:/Program Files (x86)/mingw64/bin/gcc.exe",
       "cStandard": "${default}",

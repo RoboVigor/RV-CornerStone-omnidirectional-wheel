@@ -24,6 +24,14 @@
 #define CHASSIS_SIZE_K 0.385f               // 测量值, 机器人中心点到XY边缘的距离之和
 #define CHASSIS_INVERSE_WHEEL_RADIUS 13.16f // 测量值, 麦克纳姆轮半径的倒数
 #define CHASSIS_RADIUS 0.250f               // 测量值，全向轮电机到底盘俯视图几何中心的距离
+// k0,k1,k2,k3,k4,k5
+#define SECOND_MACLAURIN_COEFFICIENT {0.6641993412640775,     \
+                                      0.006444284468539646,   \
+                                      0.0001423857226262331,  \
+                                      0.017644430204543864,   \
+                                      0.1650143850678086,     \
+                                      3.096721772539512e-05   \
+                                    }      
 
 //拨弹配置
 #define STIR_MOTOR_REDUCTION_RATE 36.0f // 拨弹电机减速比
@@ -46,3 +54,8 @@
 
 // DMA
 #define DMA_BUFFER_LENGTH 128 // DMA发送接收长度
+
+//电机相关参数
+#define C2T_3508 0.3f  //3508电机转矩对电流系数
+#define CurrentMap_C620 0.0012f  //c620电调电流对输入值的映射系数
+#define CurrentMap_C620_Inverse 833.333f //

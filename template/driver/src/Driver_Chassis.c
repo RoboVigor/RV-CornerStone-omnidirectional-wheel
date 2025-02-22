@@ -130,3 +130,62 @@ void Chassis_Limit_Power(ChassisData_Type *cd, float targetPower, float referenc
     MIAO(cd->powerScale, 0, 1);
     // Chassis_Scale_Rotor_Speed(cd, cd->powerScale);
 }
+
+void Chassis_Current_Output_Integrate(float *motorCurrentOutput, ChassisData_Type* cd){
+    for(int i =0; i<4; i++){
+        motorCurrentOutput[i] += (cd->rotorTorgue[i]*3.333f) ;
+    }
+}
+
+void Chassis_Calculate_Power_Limit(float* motorCurrentOutput, int16_t* MCO_With_PowerLimit, float *realMotorSpeed, float targetPower){
+    float coefficient[6] = SECOND_MACLAURIN_COEFFICIENT;
+    float totalPower = 0;
+    for(int i =0; i < 4; i++) {
+        totalPower += (coefficient[0] \
+                       + coefficient[1]*motorCurrentOutput[i] \
+                       + coefficient[2]*realMotorSpeed[i] \
+                       + coefficient[3]*motorCurrentOutput[i]*realMotorSpeed[i] \
+                       + coefficient[4]*motorCurrentOutput[i]*motorCurrentOutput[i] \
+                       + coefficient[5]*realMotorSpeed[i]*realMotorSpeed[i] \
+                    );
+    }
+
+    if(totalPower <= targetPower) {
+        for(int i=0; i<4; i++){
+            MCO_With_PowerLimit[i] = motorCurrentOutput[i] * CurrentMap_C620_Inverse;
+        }
+    }
+    else{
+        float a =0, b =0, c =0, ETA =0;
+        for(int i =0; i < 4; i++){
+            a += (coefficient[4]*motorCurrentOutput[i]*motorCurrentOutput[i]);
+        }
+        for(int i =0; i <4; i++){
+            b += (coefficient[3]*motorCurrentOutput[i]*realMotorSpeed[i] + coefficient[1]*motorCurrentOutput[i]);
+        }
+        for(int i=0; i< 4; i++){
+            c += (coefficient[0] + coefficient[5]*realMotorSpeed[i]*realMotorSpeed[i]);
+        }
+        if(!a == 0){
+            float DELTA, DELTA_SQRT;
+            DELTA = b*b - 4*a*c;
+            if(DELTA >= 0){
+                arm_sqrt_f32(DELTA, &DELTA_SQRT);
+                float root1 = (-b + DELTA_SQRT)/(2*a);
+                float root2 = (-b - DELTA_SQRT)/(2*a);
+                if(root1 >0 && root1 <1 && root2 >0 && root2 <1){
+                    ETA = root1 > root2? root1 : root2;
+                }else if (root1 >0 && root1 <1)
+                {
+                    ETA = root1;
+                }else if (root2 >0 && root2 <1)
+                {
+                    ETA = root2;
+                }
+            }
+        }
+        for(int i=0; i<4; i++){
+            MCO_With_PowerLimit[i] = motorCurrentOutput[i] * ETA * CurrentMap_C620_Inverse;
+        }
+    }
+}
