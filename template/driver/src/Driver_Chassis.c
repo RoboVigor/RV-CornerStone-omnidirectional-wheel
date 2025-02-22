@@ -33,13 +33,27 @@ void Chassis_Fix(ChassisData_Type *cd, float angle) {
     cd->vy       = vy * cosYaw - vx * sinYaw;
     cd->vx       = vy * sinYaw + vx * cosYaw;
 }
-
+//此处运动学逆解已修改为全向轮地盘
 void Chassis_Calculate_Rotor_Speed(ChassisData_Type *cd) {
     float coefficient = CHASSIS_INVERSE_WHEEL_RADIUS * CHASSIS_MOTOR_REDUCTION_RATE;
-    cd->rotorSpeed[0] = coefficient * (cd->vy - cd->vx - cd->vw * CHASSIS_SIZE_K);
-    cd->rotorSpeed[1] = coefficient * (cd->vy + cd->vx - cd->vw * CHASSIS_SIZE_K);
-    cd->rotorSpeed[2] = -coefficient * (cd->vy - cd->vx + cd->vw * CHASSIS_SIZE_K);
-    cd->rotorSpeed[3] = -coefficient * (cd->vy + cd->vx + cd->vw * CHASSIS_SIZE_K);
+    cd->rotorSpeed[0] = coefficient * ((cd->vy - cd->vx)*0.707f + cd->vw * CHASSIS_RADIUS);
+    cd->rotorSpeed[1] = coefficient * ((cd->vy + cd->vx)*0.707f + cd->vw * CHASSIS_RADIUS);
+    cd->rotorSpeed[2] = -coefficient * ((cd->vy - cd->vx)*0.707f + cd->vw * CHASSIS_RADIUS);
+    cd->rotorSpeed[3] = -coefficient * ((cd->vy + cd->vx)*0.707f + cd->vw * CHASSIS_RADIUS);
+}
+//此处为运动学正结算
+void Chassis_Calculate_Real_Speed(ChassisData_Type *cd, int16_t * motor_Speed) {
+    float coefficient = CHASSIS_INVERSE_WHEEL_RADIUS * CHASSIS_MOTOR_REDUCTION_RATE;
+    cd->realvx = (-motor_Speed[0]-motor_Speed[1]+motor_Speed[2]+motor_Speed[3])*0.354f/coefficient;
+    cd->realvy = (motor_Speed[0]-motor_Speed[1]-motor_Speed[2]+motor_Speed[3])*0.354f/coefficient;
+    cd->realvw = (motor_Speed[0]+motor_Speed[1]+motor_Speed[2]+motor_Speed[3])*0.25f/coefficient/CHASSIS_RADIUS;
+}
+//此处为动力学逆解算
+void Chassis_Calculate_Rotor_Torgue(ChassisData_Type *cd){
+    cd->rotorTorgue[0] = ((-cd->Fx + cd->Fy)*0.354f + cd->T * 0.25f / CHASSIS_RADIUS) / CHASSIS_INVERSE_WHEEL_RADIUS;
+    cd->rotorTorgue[1] = ((-cd->Fx - cd->Fy)*0.354f + cd->T * 0.25f / CHASSIS_RADIUS) / CHASSIS_INVERSE_WHEEL_RADIUS;
+    cd->rotorTorgue[2] = ((cd->Fx - cd->Fy)*0.354f + cd->T * 0.25f / CHASSIS_RADIUS) / CHASSIS_INVERSE_WHEEL_RADIUS;
+    cd->rotorTorgue[3] = ((cd->Fx + cd->Fy)*0.354f + cd->T * 0.25f / CHASSIS_RADIUS) / CHASSIS_INVERSE_WHEEL_RADIUS;
 }
 
 void Chassis_Limit_Rotor_Speed(ChassisData_Type *cd, float maxRotorSpeed) {
