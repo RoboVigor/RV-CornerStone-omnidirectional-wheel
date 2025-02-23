@@ -193,17 +193,11 @@ void Task_Gimbal(void *Parameters) {
         pitchCurrent = PID_Cloud_PitchSpeed.output;
         MIAO(yawCurrent, -12000, 12000);
         MIAO(pitchCurrent, -12000, 12000);
+		
+		yawCurrent=16000;
 
-        if (ROBOT_MIAO) {
-            Motor_Yaw.input   = yawCurrent;
-            Motor_Pitch.input = pitchCurrent;
-        } else if (ROBOT_WANG) {
-            Motor_Yaw.input   = yawCurrent;
-            Motor_Pitch.input = pitchCurrent;
-        } else if (ROBOT_SHARK) { //啥意思
-            Motor_Yaw.input   = yawCurrent;
-            Motor_Pitch.input = pitchCurrent;
-        }
+        Motor_Yaw.input   = yawCurrent;
+        Motor_Pitch.input = pitchCurrent;
 
         // 调试信息
         //
@@ -409,6 +403,10 @@ void Task_Chassis(void *Parameters) {
                 xRampStart    = 0;
             }
         }
+		
+		 //底盘跟随云台
+        //vw = ABS(PID_Follow_Angle.error) < followDeadRegion ? 0 : (-1 * PID_Follow_Speed.output * DPS2RPS);
+		
         // Host control
         vx += HostChassisData.vx;
         vy += HostChassisData.vy;
