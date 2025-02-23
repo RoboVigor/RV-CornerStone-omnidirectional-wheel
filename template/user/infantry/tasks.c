@@ -444,9 +444,9 @@ void Task_Chassis(void *Parameters) {
             vwRampProgress += 0.002f;
         }
 
-        // 麦轮解算及限速
-        //targetPower = 70.0 - WANG(30 - ChassisData.powerBuffer, 0.0, 10.0) / 10.0 * 70.0; // 设置目标功率
-        // targetPower = 100.0 * (1 - WANG(60.0 - ChassisData.powerBuffer, 0.0, 40.0) / 40.0); // 设置目标功率 ?
+        if(FastmoveMode == 1){
+            targetPower = 240;
+        }
 
         Chassis_Update(&ChassisData, vx, vy, vwRamp); // 更新麦轮转速
         Chassis_Fix(&ChassisData, motorAngle);        // 修正旋转后底盘的前进方向
