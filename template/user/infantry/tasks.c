@@ -25,6 +25,10 @@ void Task_Control(void *Parameters) {
             // PsShootEnabled = 0;
             // SwingMode     = (LEFT_SWITCH_TOP && RIGHT_SWITCH_TOP) ? (HAS_SLIP_RING ? 3 : 4) : 0;
             SafetyMode = LEFT_SWITCH_TOP && RIGHT_SWITCH_TOP;
+			if(LEFT_SWITCH_TOP && RIGHT_SWITCH_BOTTOM)
+			{
+				SwingMode = 3;
+			}
         } else if (ControlMode == 2) {
             //键鼠模式
             PsShootEnabled = 0;
@@ -116,8 +120,8 @@ void Task_Gimbal(void *Parameters) {
     float pitchAngleTargetRamp = 0;
 
     // 初始化云台PID
-    PID_Init(&PID_Cloud_YawAngle, 5,2.5,0.05, 1000, 10);
-    PID_Init(&PID_Cloud_YawSpeed, 7,6.67, 0, 4000, 10);
+    PID_Init(&PID_Cloud_YawAngle, 1,0,0, 1000, 10);
+    PID_Init(&PID_Cloud_YawSpeed, 25,0, 0, 8000, 10);
     PID_Init(&PID_Cloud_PitchAngle, 15, 0, 0, 16000, 0);
     PID_Init(&PID_Cloud_PitchSpeed, 75, 0, 0, 16000, 0);
 
@@ -127,7 +131,7 @@ void Task_Gimbal(void *Parameters) {
         pitchAngleTarget = 0;
 
         // 设置反馈
-        yawAngle     = -1 * Gyroscope_EulerData.yaw;    // 逆时针为正
+        yawAngle     = 1 * Gyroscope_EulerData.yaw;    // 逆时针为正
         yawSpeed     = ImuData.gy / GYROSCOPE_LSB;      // 逆时针为正
         pitchAngle   = Gyroscope_EulerData.pitch;  // 逆时针为正
         pitchSpeed   = -1 * ImuData.gx / GYROSCOPE_LSB; // 逆时针为正
@@ -240,7 +244,7 @@ void Task_Chassis(void *Parameters) {
 
     // 反馈值
     float motorAngle, motorSpeed;
-    float lastMotorAngle = Motor_Yaw.angle;
+    float lastMotorAngle = Motor_Yaw.angle;		//原Motor_Yaw.angle
     float filter[6]      = {0, 0, 0, 0, 0, 0};
     int   filterp        = 0;
     float power          = 0;
@@ -277,7 +281,7 @@ void Task_Chassis(void *Parameters) {
 
     while (1) {
         // 设置反馈值
-        motorAngle  = Motor_Yaw.angle;                                 // 电机角度
+        motorAngle  = Motor_Yaw.angle;                                 // 电机角度 原Motor_Yaw.angle
         motorSpeed  = Motor_Yaw.speed * RPM2RPS;                       // 电机角速度
         power       = ProtocolData.powerHeatData.chassis_power;        // 裁判系统功率
         powerBuffer = ProtocolData.powerHeatData.chassis_power_buffer; // 裁判系统功率缓冲
@@ -321,7 +325,7 @@ void Task_Chassis(void *Parameters) {
         } else if (SwingMode == 3) {
             swingModeEnabled = 1;
             // 匀速旋转
-            swingAngle += 450 * interval;
+            swingAngle += 330 * interval;
         } else if (SwingMode == 4) {
             swingModeEnabled = 1; //猫猫步
             swingInterval    = 0.40;
@@ -405,9 +409,6 @@ void Task_Chassis(void *Parameters) {
                 xRampStart    = 0;
             }
         }
-        //底盘跟随云台
-        vw = ABS(PID_Follow_Angle.error) < followDeadRegion ? 0 : (-1 * PID_Follow_Speed.output * DPS2RPS);
-
         // Host control
         vx += HostChassisData.vx;
         vy += HostChassisData.vy;

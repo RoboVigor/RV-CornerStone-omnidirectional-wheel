@@ -66,7 +66,7 @@ int main(void) {
 
     // Calibration
     if (ROBOT_MIAO) {
-        Motor_Set_Angle_Bias(&Motor_Yaw, 200);
+        Motor_Set_Angle_Bias(&Motor_Yaw, -110.278);
         Motor_Set_Angle_Bias(&Motor_Pitch, 315.046);
         Gyroscope_Set_Bias(&ImuData, 30, 4, -7);
     } else if (ROBOT_WANG) {
