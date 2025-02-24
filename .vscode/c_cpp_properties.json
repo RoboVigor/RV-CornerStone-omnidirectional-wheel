@@ -9,7 +9,8 @@
         "STM32F427_437xx",
         "__CC_ARM",
         "__TARGET_FPU_VFP",
-        "ARM_MATH_CM4"
+        "ARM_MATH_CM4",
+        "USE_STDPERIPH_DRIVER"
       ],
       "compilerPath": "D:/Program Files (x86)/mingw64/bin/gcc.exe",
       "cStandard": "${default}",
