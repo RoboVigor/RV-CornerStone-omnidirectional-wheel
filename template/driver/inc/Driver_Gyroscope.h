@@ -19,7 +19,7 @@
 #include "ist8310driver.h"
 #endif
 
-#define PI 3.1415926f
+#define PI 3.141592653589793f
 
 typedef struct {
     volatile int16_t ax; // m/s^2 [-8g,+8g] -> [-32768,32768] ideal:0
@@ -80,5 +80,10 @@ float Gyroscope_Get_Filter_Diff(void);
  * @brief 设置静态误差
  */
 void Gyroscope_Set_Bias(ImuData_Type *ImuData, int16_t gx_bias, int16_t gy_bias, int16_t gz_bias);
+/**
+ * @brief 坐标系转换
+ * 
+ */
+void Gyroscope_axis_trans( float *ImuData_temp)
 
 #endif

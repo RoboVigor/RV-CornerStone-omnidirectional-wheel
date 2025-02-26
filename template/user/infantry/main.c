@@ -156,7 +156,7 @@ int main(void) {
 
     //启动调度,开始执行任务
     vTaskStartScheduler();
-
+    
     //系统启动失败:定时器任务或者空闲任务的heap空间不足
     while (1) {
     }

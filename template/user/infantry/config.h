@@ -45,7 +45,19 @@
 
 // 陀螺仪设置
 #define BOARD_FRONT_IS_UP 1                     // 板子正面朝上
-#define BOARD_SHORT_SIDE_IS_PARALLEL_TO_PITCH 0 // 板子短边朝下
+#define BOARD_SHORT_SIDE_IS_PARALLEL_TO_PITCH 1 // 板子短边朝下
+#define angle_x 0                               // 内旋，先绕x轴旋转角度（rad）
+#define angle_y 0                               // 内旋，再绕y轴旋转角度（rad）
+#define angle_z PI/2                            // 内旋，最后绕z轴旋转角度（rad）
+#define trans_matrix {(cos(angle_y)*cos(angle_z))/(pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
+                      (cos(angle_x)*sin(angle_z)*pow(cos(angle_y),2) + cos(angle_x)*sin(angle_z)*pow(sin(angle_y),2) + cos(angle_z)*sin(angle_x)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
+                      (sin(angle_x)*sin(angle_z)*pow(cos(angle_y),2) + sin(angle_x)*sin(angle_z)*pow(sin(angle_y),2) - cos(angle_x)*cos(angle_z)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
+                      -(cos(angle_y)*sin(angle_z))/(pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
+                      (cos(angle_x)*cos(angle_z)*pow(cos(angle_y),2) + cos(angle_x)*cos(angle_z)*pow(sin(angle_y),2) - sin(angle_x)*sin(angle_z)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
+                      (cos(angle_z)*sin(angle_x)*pow(cos(angle_y),2) + cos(angle_z)*sin(angle_x)*pow(sin(angle_y),2) + cos(angle_x)*sin(angle_z)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
+                      sin(angle_y)/(pow(cos(angle_y),2) + pow(sin(angle_y),2)), \
+                      -(cos(angle_y)*sin(angle_x))/(pow(cos(angle_x),2)*pow(cos(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)),  \
+                      (cos(angle_x)*cos(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2))}
 
 #define GYROSCOPE_YAW_FILTER_THRESHOLD 0.005f // 零飘修正阈值   (2024/6/8)感觉不太好用，是我不会用吗？
 #define GYROSCOPE_YAW_MODIFICATION -0.002f    // 零飘修正值

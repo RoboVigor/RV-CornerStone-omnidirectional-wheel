@@ -4,6 +4,7 @@
 #include "config.h"
 #include "MadgwickAHRS.h"
 #include "Driver_Gyroscope.h"
+#include "arm_math.h"
 
 static float          rollAngle;
 static float          pitchAngle;
@@ -72,24 +73,12 @@ int Gyroscope_Update(GyroscopeData_Type *GyroscopeData) {
 
     //成功的话进行赋值
     ImuData.temp = (((int16_t) mpu_buf[6]) << 8) | mpu_buf[7];
-#if BOARD_FRONT_IS_UP
     ImuData.az = (((int16_t) mpu_buf[4]) << 8) | mpu_buf[5];
     ImuData.gz = ((((int16_t) mpu_buf[12]) << 8) | mpu_buf[13]) - ImuData.gz_bias;
-#else
-    ImuData.az = -1 * (((int16_t) mpu_buf[4]) << 8) | mpu_buf[5];
-    ImuData.gz = -1 * ((((int16_t) mpu_buf[12]) << 8) | mpu_buf[13]) - ImuData.gz_bias;
-#endif
-#if BOARD_SHORT_SIDE_IS_PARALLEL_TO_PITCH
     ImuData.ax = (((int16_t) mpu_buf[0]) << 8) | mpu_buf[1];
     ImuData.ay = (((int16_t) mpu_buf[2]) << 8) | mpu_buf[3];
     ImuData.gx = ((((int16_t) mpu_buf[8]) << 8) | mpu_buf[9]) - ImuData.gx_bias;
     ImuData.gy = ((((int16_t) mpu_buf[10]) << 8) | mpu_buf[11]) - ImuData.gy_bias;
-#else
-    ImuData.ay = (((int16_t) mpu_buf[0]) << 8) | mpu_buf[1];
-    ImuData.ax = (((int16_t) mpu_buf[2]) << 8) | mpu_buf[3];
-    ImuData.gy = ((((int16_t) mpu_buf[8]) << 8) | mpu_buf[9]) - ImuData.gy_bias;
-    ImuData.gx = ((((int16_t) mpu_buf[10]) << 8) | mpu_buf[11]) - ImuData.gx_bias;
-#endif
 #endif
 #ifdef STM32F40_41xxx
     static uint8_t buf[8];
@@ -127,19 +116,23 @@ int Gyroscope_Update(GyroscopeData_Type *GyroscopeData) {
 }
 
 void Gyroscope_Solve(GyroscopeData_Type *GyroscopeData) {
-    xSpeed = (float) ((ImuData.gx / GYROSCOPE_LSB) * PI / 180.0);
-    ySpeed = (float) ((ImuData.gy / GYROSCOPE_LSB) * PI / 180.0);
-    zSpeed = (float) ((ImuData.gz / GYROSCOPE_LSB) * PI / 180.0);
-    xAcc   = (float) (ImuData.ax / ACCELERATE_LSB);
-    yAcc   = (float) (ImuData.ay / ACCELERATE_LSB);
-    zAcc   = (float) (ImuData.az / ACCELERATE_LSB);
+    float ImuData_temp[3][3];
+    ImuData_temp[0][0] = (float) ((ImuData.gx / GYROSCOPE_LSB) * PI / 180.0);
+    ImuData_temp[0][1] = (float) ((ImuData.gy / GYROSCOPE_LSB) * PI / 180.0);
+    ImuData_temp[0][2] = (float) ((ImuData.gz / GYROSCOPE_LSB) * PI / 180.0);
+    ImuData_temp[1][0] = (float) (ImuData.ax / ACCELERATE_LSB);
+    ImuData_temp[1][1] = (float) (ImuData.ay / ACCELERATE_LSB);
+    ImuData_temp[1][2] = (float) (ImuData.az / ACCELERATE_LSB);
 	
 	
 #ifdef STM32F40_41xxx
-    xMag = (float) (ImuData.mx / MAGNETIC_LSB);
-    yMag = (float) (ImuData.my / MAGNETIC_LSB);
-    zMag = (float) (ImuData.mz / MAGNETIC_LSB);
+    ImuData_temp[2][0] = (float) (ImuData.mx / MAGNETIC_LSB);
+    ImuData_temp[2][1] = (float) (ImuData.my / MAGNETIC_LSB);
+    ImuData_temp[2][2] = (float) (ImuData.mz / MAGNETIC_LSB);
 #endif
+
+    //坐标系转换
+    Gyroscope_axis_trans(ImuData_temp);
 
     // GD算法或Madgwick算法,梯度算法,网上开源
 #ifdef STM32F427_437xx
@@ -150,9 +143,9 @@ void Gyroscope_Solve(GyroscopeData_Type *GyroscopeData) {
 #endif
 
     // 四元数->欧拉角
-    pitchAngle = atan2(2.0f * (q0 * q1 + q2 * q3), q0 * q0 - q1 * q1 - q2 * q2 + q3 * q3) * 180 / PI;
-    rollAngle  = asin(2.0f * (q0 * q2 - q1 * q3)) * 180 / PI;
-    yawAngle   = atan2(2.0f * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 180 / PI;
+    rollAngle = atan2(2.0f * (q0 * q1 + q2 * q3), 1 - 2*(q2*q2 + q3*q3)) * 180 / PI;
+    pitchAngle  = asin(2.0f * (q0 * q2 - q1 * q3)) * 180 / PI;
+    yawAngle   = atan2(2.0f * (q1 * q2 + q0 * q3), 1 - 2*(q1*q1 + q2*q2)) * 180 / PI;
 
     // 更新滤波器
     Filter_Update(&Filter_Yaw, yawAngle);
@@ -168,18 +161,20 @@ void Gyroscope_Solve(GyroscopeData_Type *GyroscopeData) {
     GyroscopeData->modification += GYROSCOPE_YAW_MODIFICATION;
 
     // 应用滤波
-    GyroscopeData->yaw = Filter_Apply_Limit_Breadth(&Filter_Yaw) + GyroscopeData->yawoffset+GyroscopeData->modification;
+    GyroscopeData->yaw = Filter_Apply_Limit_Breadth(&Filter_Yaw) + GyroscopeData->yawoffset            //+GyroscopeData->modification;重复零飘修正，在滤波中已有零漂限幅补偿
 
-    // 输出欧拉角
+    // 开机时yaw轴转动角度补偿，用于正式启动时的yaw轴零点确定
+    #if GYROSCOPE_START_UP_DELAY_ENABLED
     if (GyroscopeData->startupCounter == GYROSCOPE_START_UP_DELAY - 1) {
         GyroscopeData->yawoffset = -GyroscopeData->yaw;
     }
+    #endif
 
-    GyroscopeData->pitch = -pitchAngle;
+    GyroscopeData->pitch = -pitchAngle;  //在右手坐标系z轴指向天空下，pitch向上转时为负数，此处加负号以符合人的直觉
     GyroscopeData->roll  = rollAngle;
     debug_pitch          = GyroscopeData->pitch;
 
-    // 输出欧拉角
+    // 开机延迟计数
 #if GYROSCOPE_START_UP_DELAY_ENABLED
     if (GyroscopeData->startupCounter < GYROSCOPE_START_UP_DELAY) {
         GyroscopeData->startupCounter += 1;
@@ -195,4 +190,42 @@ void Gyroscope_Set_Bias(ImuData_Type *ImuData, int16_t gx_bias, int16_t gy_bias,
     ImuData->gx_bias = gx_bias;
     ImuData->gy_bias = gy_bias;
     ImuData->gz_bias = gz_bias;
+}
+
+void Gyroscope_axis_trans( float *ImuData_temp) {
+    float transMatrix[9] = trans_matrix;
+    arm_matrix_instance_f32 matrixTrans;
+    arm_mat_init_f32(&matrixTrans, 3, 3, (float32_t *)transMatrix);
+    #ifdef STM32F427_437xx
+        arm_matrix_instance_f32 ImuData_Src;
+        arm_matrix_instance_f32 ImuData_Dst;
+        float ImuData_trans[2][3];
+        arm_mat_init_f32(&ImuData_Src, 2, 3, (float32_t *)ImuData_temp);
+        arm_mat_init_f32(&ImuData_Dst, 2, 3, (float32_t *)ImuData_trans);
+        arm_mat_mult_f32(&ImuData_Src, &matrixTrans, &ImuData_Dst);
+        xSpeed = ImuData_trans[0][0];
+        ySpeed = ImuData_trans[0][1];
+        zSpeed = ImuData_trans[0][2];
+        xAcc = ImuData_trans[1][0];
+        yAcc = ImuData_trans[1][1];
+        zAcc = ImuData_trans[1][2];
+    #endif
+
+    #ifdef STM32F40_41xxx
+        arm_matrix_instance_f32 ImuData_Src;
+        arm_matrix_instance_f32 ImuData_Dst;
+        float ImuData_trans[3][3];
+        arm_mat_init_f32(&ImuData_Src, 3, 3, (float32_t *)ImuData_temp);
+        arm_mat_init_f32(&ImuData_Dst, 3, 3, (float32_t *)ImuData_trans);
+        arm_mat_mult_f32(&ImuData_Src, &matrixTrans, &ImuData_Dst);
+        xSpeed = ImuData_trans[0][0];
+        ySpeed = ImuData_trans[0][1];
+        zSpeed = ImuData_trans[0][2];
+        xAcc = ImuData_trans[1][0];
+        yAcc = ImuData_trans[1][1];
+        zAcc = ImuData_trans[1][2];
+        xMag = ImuData_trans[2][0];
+        yMag = ImuData_trans[2][1];
+        zMag = ImuData_trans[2][2];
+    #endif 
 }
