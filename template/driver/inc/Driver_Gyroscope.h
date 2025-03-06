@@ -50,6 +50,9 @@ typedef struct {
     float pitch;
     float roll;
     float yawoffset;
+    float yawSpeed;
+    float pitchSpeed;
+    float rollSpeed;
     int   startupCounter;
     float modification;
 } GyroscopeData_Type;
@@ -84,6 +87,6 @@ void Gyroscope_Set_Bias(ImuData_Type *ImuData, int16_t gx_bias, int16_t gy_bias,
  * @brief 坐标系转换
  * 
  */
-void Gyroscope_axis_trans( float *ImuData_temp)
+void Gyroscope_axis_trans( float *ImuData_temp);
 
 #endif

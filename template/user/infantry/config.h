@@ -10,13 +10,16 @@
 #define ROBOT_WANG (Robot_Id == 2)
 #define ROBOT_SHARK (Robot_Id == 3)
 
+//
+#define fricEnabled 0
+
 // 调试
 #define DEBUG_ENABLED 0          // 调试开关
 #define SERIAL_DEBUG_PORT USART6 // 串口调试端口
 
 // 运动参数
-#define GIMBAL_PITCH_MIN -38
-#define GIMBAL_PITCH_MAX 13
+#define GIMBAL_PITCH_MIN -35
+#define GIMBAL_PITCH_MAX 35
 #define CHASSIS_ROTOR_SPEED 550
 
 // 底盘配置
@@ -44,21 +47,20 @@
 #define GIMBAL_MOTOR_REDUCTION_RATE 1.0f // 云台电机减速比
 
 // 陀螺仪设置
-#define BOARD_FRONT_IS_UP 1                     // 板子正面朝上
-#define BOARD_SHORT_SIDE_IS_PARALLEL_TO_PITCH 1 // 板子短边朝下
+#define fastTriangle 1                          // 快速三角函数计算，仅用于imu解算，且下列三个角度必须为PI/2的倍数
 #define angle_x 0                               // 内旋，先绕x轴旋转角度（rad）
 #define angle_y 0                               // 内旋，再绕y轴旋转角度（rad）
 #define angle_z PI/2                            // 内旋，最后绕z轴旋转角度（rad）
-#define trans_matrix {(cos(angle_y)*cos(angle_z))/(pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
-                      (cos(angle_x)*sin(angle_z)*pow(cos(angle_y),2) + cos(angle_x)*sin(angle_z)*pow(sin(angle_y),2) + cos(angle_z)*sin(angle_x)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
-                      (sin(angle_x)*sin(angle_z)*pow(cos(angle_y),2) + sin(angle_x)*sin(angle_z)*pow(sin(angle_y),2) - cos(angle_x)*cos(angle_z)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
-                      -(cos(angle_y)*sin(angle_z))/(pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
-                      (cos(angle_x)*cos(angle_z)*pow(cos(angle_y),2) + cos(angle_x)*cos(angle_z)*pow(sin(angle_y),2) - sin(angle_x)*sin(angle_z)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
-                      (cos(angle_z)*sin(angle_x)*pow(cos(angle_y),2) + cos(angle_z)*sin(angle_x)*pow(sin(angle_y),2) + cos(angle_x)*sin(angle_z)*sin(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(cos(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_x),2)*pow(cos(angle_z),2)*pow(sin(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2) + pow(cos(angle_y),2)*pow(cos(angle_z),2)*pow(sin(angle_x),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2)*pow(sin(angle_z),2) + pow(cos(angle_z),2)*pow(sin(angle_x),2)*pow(sin(angle_y),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)*pow(sin(angle_z),2)), \
-                      sin(angle_y)/(pow(cos(angle_y),2) + pow(sin(angle_y),2)), \
-                      -(cos(angle_y)*sin(angle_x))/(pow(cos(angle_x),2)*pow(cos(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2)),  \
-                      (cos(angle_x)*cos(angle_y))/(pow(cos(angle_x),2)*pow(cos(angle_y),2) + pow(cos(angle_x),2)*pow(sin(angle_y),2) + pow(cos(angle_y),2)*pow(sin(angle_x),2) + pow(sin(angle_x),2)*pow(sin(angle_y),2))}
-
+#if fastTriangle
+  #define f_cos(para) (pow(-1, ((int)((para + PI/2)/PI*2))/2)*abs((int)((para + PI/2)/PI*2)%2))
+  #define f_sin(para) (pow(-1, ((int)(para/PI*2))/2)*abs((int)(para/PI*2)%2))
+#else
+  #define f_cos(para) cos(para)
+  #define f_sin(para) sin(para)
+#endif
+#define trans_matrix {f_cos(angle_y)*f_cos(angle_z), f_cos(angle_x)*f_sin(angle_z) + f_cos(angle_z)*f_sin(angle_x)*f_sin(angle_y), f_sin(angle_x)*f_sin(angle_z) - f_cos(angle_x)*f_cos(angle_z)*f_sin(angle_y), \
+                      -f_cos(angle_y)*f_sin(angle_z), f_cos(angle_x)*f_cos(angle_z) - f_sin(angle_x)*f_sin(angle_y)*f_sin(angle_z), f_cos(angle_z)*f_sin(angle_x) + f_cos(angle_x)*f_sin(angle_y)*f_sin(angle_z),  \
+                      f_sin(angle_y), -f_cos(angle_y)*f_sin(angle_x), f_cos(angle_x)*f_cos(angle_y)}
 #define GYROSCOPE_YAW_FILTER_THRESHOLD 0.005f // 零飘修正阈值   (2024/6/8)感觉不太好用，是我不会用吗？
 #define GYROSCOPE_YAW_MODIFICATION -0.002f    // 零飘修正值
 #define GYROSCOPE_LSB 16.384f                 // 陀螺仪敏感度 2^16/4000

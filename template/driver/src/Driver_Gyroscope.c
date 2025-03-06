@@ -147,6 +147,9 @@ void Gyroscope_Solve(GyroscopeData_Type *GyroscopeData) {
     pitchAngle  = asin(2.0f * (q0 * q2 - q1 * q3)) * 180 / PI;
     yawAngle   = atan2(2.0f * (q1 * q2 + q0 * q3), 1 - 2*(q1*q1 + q2*q2)) * 180 / PI;
 
+    //计算角速度
+    Gyroscope_Calculate_angleSpeed(&GyroscopeData, yawAngle, pitchAngle, rollAngle);
+
     // 更新滤波器
     Filter_Update(&Filter_Yaw, yawAngle);
 
@@ -161,7 +164,7 @@ void Gyroscope_Solve(GyroscopeData_Type *GyroscopeData) {
     GyroscopeData->modification += GYROSCOPE_YAW_MODIFICATION;
 
     // 应用滤波
-    GyroscopeData->yaw = Filter_Apply_Limit_Breadth(&Filter_Yaw) + GyroscopeData->yawoffset            //+GyroscopeData->modification;重复零飘修正，在滤波中已有零漂限幅补偿
+    GyroscopeData->yaw = Filter_Apply_Limit_Breadth(&Filter_Yaw) + GyroscopeData->yawoffset;            //+GyroscopeData->modification;重复零飘修正，在滤波中已有零漂限幅补偿
 
     // 开机时yaw轴转动角度补偿，用于正式启动时的yaw轴零点确定
     #if GYROSCOPE_START_UP_DELAY_ENABLED
@@ -170,7 +173,7 @@ void Gyroscope_Solve(GyroscopeData_Type *GyroscopeData) {
     }
     #endif
 
-    GyroscopeData->pitch = -pitchAngle;  //在右手坐标系z轴指向天空下，pitch向上转时为负数，此处加负号以符合人的直觉
+    GyroscopeData->pitch = pitchAngle;  //放弃修改顺时针为正（因为这会导致后续的云台控制要修正更多的方向，不利于模型推导
     GyroscopeData->roll  = rollAngle;
     debug_pitch          = GyroscopeData->pitch;
 
@@ -228,4 +231,25 @@ void Gyroscope_axis_trans( float *ImuData_temp) {
         yMag = ImuData_trans[2][1];
         zMag = ImuData_trans[2][2];
     #endif 
+}
+
+void Gyroscope_Calculate_angleSpeed(GyroscopeData_Type *gd, float yaw, float pitch, float roll){
+    yaw *= PI/160;
+    pitch *= PI/160;
+    roll *= PI/160;
+    float32_t angleSpeed[3] = {xSpeed, ySpeed, zSpeed};
+    float32_t angleSpeed_trans[3];
+    float32_t transMatrix[9] = {cos(roll)*cos(yaw),cos(roll)*sin(yaw),-sin(roll), \
+                                cos(yaw)*sin(pitch)*sin(roll) - cos(pitch)*sin(yaw), cos(pitch)*cos(yaw) + sin(pitch)*sin(roll)*sin(yaw), cos(roll)*sin(pitch), \
+                                sin(pitch)*sin(yaw) + cos(pitch)*cos(yaw)*sin(roll), cos(pitch)*sin(roll)*sin(yaw) - cos(yaw)*sin(pitch), cos(pitch)*cos(roll)};
+    arm_matrix_instance_f32 src;
+    arm_matrix_instance_f32 dst;
+    arm_matrix_instance_f32 trans;
+    arm_mat_init_f32(&src, 1, 3, angleSpeed);
+    arm_mat_init_f32(&dst, 1, 3, angleSpeed_trans);
+    arm_mat_init_f32(&trans, 3, 3, transMatrix);
+    arm_mat_mult_f32(&src, &trans, &dst);
+    gd->pitchSpeed = angleSpeed_trans[0]* 160/PI;
+    gd->rollSpeed = angleSpeed_trans[1]* 160/PI;
+    gd->yawSpeed = angleSpeed_trans[2]* 160/PI; //同yaw轴角度修改为顺势针为正
 }

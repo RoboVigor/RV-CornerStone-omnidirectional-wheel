@@ -42,24 +42,12 @@ void Task_Control(void *Parameters) {
             MagzineOpened = keyboardData.F;
             // 小陀螺
             if (keyboardData.C) {
-                SwingMode = 3;
+                SwingMode = 1;
             } 
-						else if (keyboardData.Z) {
-                SwingMode = 5;
-            }
-						else if (keyboardData.X) {
-                SwingMode = 6;
-            }
-						else if (keyboardData.V) {
-                SwingMode = 0;
-			}
-//						else if (keyboardData.A) {
-//                SwingMode = 7;	
-//            }
             // 高射速模式
-            FastShootMode = keyboardData.E;
+            if(keyboardData.E) ShootMode = fastShoot;
             //高速移动模式(关闭底盘功率上限，飞坡用)
-            FastmoveMode = keyboardData.Shift;
+            if(keyboardData.Shift) moveMode = fastMove;
         }
         // 调试视觉用
         // FrictEnabled   = (remoteData.switchLeft == 2) || (remoteData.switchLeft == 1) && (remoteData.switchRight != 2);
@@ -88,7 +76,7 @@ void Task_Gimbal(void *Parameters) {
     int16_t    intervalms   = interval * 1000;     // 任务运行间隔 ms
 
     // 反馈值
-    float yawAngle, yawSpeed, pitchAngle, pitchSpeed, chassisAngle;
+    float yawAngle, yawSpeed, pitchAngle, pitchSpeed, chassisAngle, motorYawSpeed;
 
     // 目标值
     float yawAngleTarget            = 0; // 目标Yaw
@@ -99,6 +87,7 @@ void Task_Gimbal(void *Parameters) {
     float pitchAngleTargetFixStable = 0; // 上坡补偿
     float yawAngleTargetPs          = 0; // 视觉辅助
     float pitchAngleTargetPs        = 0; // 视觉辅助
+    int8_t pitchInit                  = 0; // pitch启动初始校准
 
     // 输出量
     int32_t yawCurrent   = 0;
@@ -106,20 +95,15 @@ void Task_Gimbal(void *Parameters) {
 
     // Pitch轴斜坡参数
     float pitchRampProgress    = 0;
-	if(ROBOT_WANG)
-	{
-	}else
-	{
-		float pitchRampStart       = Gyroscope_EulerData.pitch - 90;
-	}
-    float pitchRampStart       = Gyroscope_EulerData.pitch - 90;
+    float pitchRampStart       = Gyroscope_EulerData.pitch;
     float pitchAngleTargetRamp = 0;
 
     // 初始化云台PID
-    PID_Init(&PID_Cloud_YawAngle, 5,2.5,0.05, 1000, 10);
-    PID_Init(&PID_Cloud_YawSpeed, 7,6.67, 0, 4000, 10);
+    PID_Init(&PID_Cloud_YawAngle, 5, 1, 0, 1000, 10);
+    PID_Init(&PID_Cloud_YawSpeed, 7, 2, 0, 4000, 10);
     PID_Init(&PID_Cloud_PitchAngle, 15, 0, 0, 16000, 0);
     PID_Init(&PID_Cloud_PitchSpeed, 75, 0, 0, 16000, 0);
+    PID_Init(&PID_Cloud_MotorYawSpeed, 3, 1, 0, 4000, 0);
 
     while (1) {
         // 重置目标
@@ -127,96 +111,72 @@ void Task_Gimbal(void *Parameters) {
         pitchAngleTarget = 0;
 
         // 设置反馈
-        yawAngle     = -1 * Gyroscope_EulerData.yaw;    // 逆时针为正
-        yawSpeed     = ImuData.gy / GYROSCOPE_LSB;      // 逆时针为正
-        pitchAngle   = Gyroscope_EulerData.pitch;  // 逆时针为正
-        pitchSpeed   = -1 * ImuData.gx / GYROSCOPE_LSB; // 逆时针为正
-        chassisAngle = -1 * Motor_Pitch.angle + pitchAngle;
+        yawAngle     = Gyroscope_EulerData.yaw;    // 逆时针为正
+        yawSpeed     = Gyroscope_EulerData.yawSpeed;      // 逆时针为正
+        pitchAngle   = Gyroscope_EulerData.pitch;  // 
+        pitchSpeed   = Gyroscope_EulerData.pitchSpeed; // 
+        chassisAngle = - Motor_Pitch.angle + pitchAngle; //计算底盘的旋转角度，此处要求一点，电机角度和imu要保持一致
+        motorYawSpeed = Motor_Yaw.speed;
 
         // 遥控器输入角度目标
 		if(ControlMode==1)
 		{
-        if (ABS(remoteData.rx) > 30) yawAngleTargetControl += remoteData.rx / 660.0f * 360 * interval;
-        if (ABS(remoteData.ry) > 30) pitchAngleTargetControl -= remoteData.ry / 660.0f * 360 * interval;
+        if (ABS(remoteData.rx) > 30) yawAngleTargetControl = remoteData.rx / 660.0f * 360 * interval;
+        if (ABS(remoteData.ry) > 30) pitchAngleTargetControl = remoteData.ry / 660.0f * 360 * interval;
 		}
 		else if (ControlMode==2)
 		{
-        yawAngleTargetControl += mouseData.x * 0.5 * 0.005 * 1.2; // 0.005
-        pitchAngleTargetControl += mouseData.y * 0.005 * 0.8;
+        yawAngleTargetControl = mouseData.x * 0.5 * interval; // 0.005
+        pitchAngleTargetControl = mouseData.y * 0.8 * interval;
 		}
-        MIAO(pitchAngleTargetControl, GIMBAL_PITCH_MIN, GIMBAL_PITCH_MAX);
         yawAngleTarget += yawAngleTargetControl;
         pitchAngleTarget += pitchAngleTargetControl;
 
+
         // 视觉辅助
-        if (!PsAimEnabled) {
-            yawAngleTargetControl += yawAngleTargetPs;
-            pitchAngleTargetControl += pitchAngleTargetPs;
-            yawAngleTarget += yawAngleTargetPs;
-            pitchAngleTarget += pitchAngleTargetPs;
-            yawAngleTargetPs   = 0;
-            pitchAngleTargetPs = 0;
-        } else {
-            yawAngleTargetPs += HostAutoaimData.yaw_angle_diff;
-            pitchAngleTargetPs += HostAutoaimData.pitch_angle_diff;
+        yawAngleTargetPs = HostAutoaimData.yaw_angle_diff;
+        pitchAngleTargetPs = HostAutoaimData.pitch_angle_diff;
+        if (PsAimEnabled) {
+             yawAngleTarget = yawAngle + yawAngleTargetPs;
+             pitchAngleTarget = pitchAngle + pitchAngleTargetPs;
         }
-        MIAO(pitchAngleTargetPs, GIMBAL_PITCH_MIN - pitchAngleTarget, GIMBAL_PITCH_MAX - pitchAngleTarget);
-        yawAngleTarget += yawAngleTargetPs;
-        pitchAngleTarget += pitchAngleTargetPs;
-
         // 斜坡补偿
-        pitchAngleTargetFix = -1 * (chassisAngle / 40.0) * (GIMBAL_PITCH_MIN - pitchAngleTarget);
-        FirstOrderLowPassFilter(pitchAngleTargetFix, &pitchAngleTargetFixStable, 200, 20);
-        pitchAngleTarget += pitchAngleTargetFixStable;
+        // pitchAngleTargetFix = -1 * (chassisAngle / 40.0) * (GIMBAL_PITCH_MIN - pitchAngleTarget);                        //这东西写的什么玩意，根本看不懂他的数学模型是什么
+        // FirstOrderLowPassFilter(pitchAngleTargetFix, &pitchAngleTargetFixStable, 200, 20);
+        // pitchAngleTarget += pitchAngleTargetFixStable;
 
-        // 限制云台运动范围
-        MIAO(pitchAngleTarget, GIMBAL_PITCH_MIN, GIMBAL_PITCH_MAX);
+        // 限制云台运动范围即斜坡补偿
+        MIAO(pitchAngleTarget, GIMBAL_PITCH_MIN + chassisAngle, GIMBAL_PITCH_MAX + chassisAngle);
 
         // 开机时pitch轴匀速抬起
-        pitchAngleTargetRamp = RAMP(pitchRampStart, pitchAngleTarget, pitchRampProgress);
-        if (pitchRampProgress < 1) {
+        if(!pitchInit){
+            pitchAngleTarget = RAMP(pitchRampStart, 0, pitchRampProgress);
+            if (pitchRampProgress < 1) {
             pitchRampProgress += 0.01f;  
+            }
+            else{
+                if(Motor_Pitch.angleBiasInit) Motor_Pitch.angleBias = 0;
+                Motor_Set_Angle_Bias(&Motor_Pitch, Motor_Pitch.angle);
+                pitchInit = 1;
+            }
         }
 
         // 计算PID
-        PID_Calculate(&PID_Cloud_YawAngle, yawAngleTarget, -1 * Gyroscope_EulerData.yaw);
-        PID_Calculate(&PID_Cloud_YawSpeed, PID_Cloud_YawAngle.output, yawSpeed * 1.1);
-        PID_Calculate(&PID_Cloud_PitchAngle, pitchAngleTargetRamp, pitchAngle);
-        PID_Calculate(&PID_Cloud_PitchSpeed, PID_Cloud_PitchAngle.output, pitchSpeed * 1.1);
+        PID_Calculate(&PID_Cloud_YawAngle, yawAngleTarget, Gyroscope_EulerData.yaw);
+        PID_Calculate(&PID_Cloud_YawSpeed, PID_Cloud_YawAngle.output, yawSpeed);
+        PID_Calculate(&PID_Cloud_PitchAngle, pitchAngleTarget, pitchAngle);
+        PID_Calculate(&PID_Cloud_PitchSpeed, PID_Cloud_PitchAngle.output, pitchSpeed);
+        PID_Calculate(&PID_Cloud_MotorYawSpeed, ChassisData.realvw, -1*motorYawSpeed);
 
         // 输出电流
-        yawCurrent   = -20 * PID_Cloud_YawSpeed.output;
+        if(SwingMode){
+            yawCurrent = (1 - pow(2.71828, -2.23*abs(PID_Cloud_YawAngle.error)))*PID_Cloud_YawSpeed.output + pow(2.71828, -2.23*abs(PID_Cloud_YawAngle.error)) * PID_Cloud_MotorYawSpeed.output;   //动态权重融合
+        }else{
+            yawCurrent = PID_Cloud_YawSpeed.output;
+        }
         pitchCurrent = PID_Cloud_PitchSpeed.output;
-        MIAO(yawCurrent, -12000, 12000);
-        MIAO(pitchCurrent, -12000, 12000);
-
-        if (ROBOT_MIAO) {
-            Motor_Yaw.input   = yawCurrent;
-            Motor_Pitch.input = pitchCurrent;
-        } else if (ROBOT_WANG) {
-            Motor_Yaw.input   = yawCurrent;
-            Motor_Pitch.input = pitchCurrent;
-        } else if (ROBOT_SHARK) { //啥意思
-            Motor_Yaw.input   = yawCurrent;
-            Motor_Pitch.input = pitchCurrent;
-        }
-
-        // 调试信息
-        //
-        if (pitchAngle < 1 && pitchAngle > -1) {
-            DebugData.debug5 = Motor_Pitch.position;
-        }
-        DebugData.debug1 = pitchAngle * 1000;
-        // DebugData.debug2 = Motor_Pitch.position;
-        // DebugData.debug3 = chassisAngle;
-        // DebugData.debug4 = Motor_Pitch.angle;
-        // DebugData.debug3 = yawAngle;
-        // DebugData.debug4 = ImuData.gz;
-        // DebugData.debug5 = Motor_Yaw.position;
-        // DebugData.debug6 = Motor_Pitch.position;
-        // DebugData.debug5 = Motor_Pitch.angle;
-        // DebugData.debug6 = PID_Cloud_YawSpeed.output;
-        // DebugData.debug7 = yawCurrent;
+        Motor_Yaw.input   = yawCurrent;
+        Motor_Pitch.input = pitchCurrent;
 
         //任务间隔
         vTaskDelayUntil(&LastWakeTime, intervalms);
@@ -250,16 +210,13 @@ void Task_Chassis(void *Parameters) {
     float realMotorSpeed[4] = {0,0,0,0};
 
     // 小陀螺
-    float   swingAngle       = 0;
+    float   swingSpeed       = 0;
     uint8_t swingModeEnabled = 0;
-    float   swingInterval    = 0.25;
-    float   swingTimer       = swingInterval;
-    int8_t  swingDir         = 1; // 瞬时针猫猫步
 
     // 底盘跟随PID
     float followDeadRegion = 3.0;
     PID_Init(&PID_Follow_Angle, 1, 0, 0, 900, 100);
-    PID_Init(&PID_Follow_Speed, 3, 6, 0, 900, 0);
+    PID_Init(&PID_Follow_Speed, 1, 0.5, 0, 900, 0);
 
     // 速度环PID
     PID_Init(&PID_LFCM, 2, 0, 0, 6000, 0);
@@ -283,6 +240,8 @@ void Task_Chassis(void *Parameters) {
     float yRampStart    = 0;
     float yTargetRamp   = 0;
 
+    if(fricEnabled) moveMode = frictMove;
+
     while (1) {
         // 设置反馈值
         motorAngle  = Motor_Yaw.angle;                                 // 电机角度
@@ -302,71 +261,18 @@ void Task_Chassis(void *Parameters) {
             PID_Follow_Angle.p = 1.3;
         }
 
-        // 底盘跟随死区
-        if (SwingMode) {
-            followDeadRegion = 0; // 关闭底盘跟随死区
-        } else {
-            followDeadRegion = 1; // 开启底盘跟随死区
+        //小陀螺模式
+        switch (SwingMode)
+        {
+        case 1:
+            swingSpeed = 20 * RPM2RPS;
+            swingModeEnabled = 1;
+            break;
+        
+        default:
+            swingModeEnabled = 0;
+            break;
         }
-
-        // 小陀螺
-        if (SwingMode == 1) {
-            swingModeEnabled = 1;
-            swingInterval    = 0.45;
-            // 先转45后90转动
-            swingTimer += interval;
-            if (swingAngle == 0) {
-                swingAngle = 45;
-                // swingTimer = -0.2;
-            } else if (swingTimer >= swingInterval) {
-                swingAngle += 90;
-                swingTimer = 0;
-            }
-        } else if (SwingMode == 2) {
-            swingModeEnabled = 1;
-            swingInterval    = 0.3;
-            // 不规律旋转
-            swingTimer += interval;
-            if (swingTimer >= swingInterval) {
-                swingAngle += rand() % 40 + 50;
-                swingTimer = 0;
-            }
-        } else if (SwingMode == 3) {
-            swingModeEnabled = 1;
-            // 匀速旋转
-            swingAngle += 450 * interval;
-        } else if (SwingMode == 4) {
-            swingModeEnabled = 1; //猫猫步
-            swingInterval    = 0.40;
-            // 先顺时旋转至45度位置, 后逆时旋转到-45度位置
-            swingTimer += interval;
-            if (swingAngle == 0) {
-                swingAngle = 45;
-                // swingTimer = -0.2;
-            } else if (swingTimer >= swingInterval) {
-                swingAngle -= 90 * swingDir;
-                swingDir   = -swingDir;
-                swingTimer = 0;
-            }
-        } else if (SwingMode == 5) {
-            swingModeEnabled = 1;
-            // 匀速旋转
-            swingAngle += -450 * interval;
-        }
-         else if (SwingMode == 6) {
-            swingModeEnabled = 1;
-            // 匀速旋转
-            swingAngle += 285 * interval;
-        }
-				else {
-            if (swingModeEnabled) {
-                swingModeEnabled = 0; // 圈数清零
-                Motor_Yaw.round  = 0;
-            }
-            swingAngle = 0;
-        }
-        PID_Calculate(&PID_Follow_Angle, swingAngle, motorAngle);
-        PID_Calculate(&PID_Follow_Speed, PID_Follow_Angle.output, motorSpeed);
 
         // 设置底盘总体移动速度
         vx = 0;
@@ -418,12 +324,23 @@ void Task_Chassis(void *Parameters) {
                 xRampStart    = 0;
             }
         }
-        //底盘跟随云台
-        vw = ABS(PID_Follow_Angle.error) < followDeadRegion ? 0 : (-1 * PID_Follow_Speed.output * DPS2RPS);
+        //运动学正解算底盘真实速度
+        Chassis_Calculate_Real_Speed(&ChassisData, realMotorSpeed);
 
-        // Host control
-        vx += HostChassisData.vx;
-        vy += HostChassisData.vy;
+        //地盘跟随和小陀螺
+        if(!swingModeEnabled){
+            //底盘跟随云台
+            vw += Gyroscope_EulerData.yawSpeed * DPS2RPS; //前馈
+            PID_Calculate(&PID_Follow_Angle, 0, (int)motorAngle % 360);
+            if(abs(PID_Follow_Angle.error) > followDeadRegion) {
+                PID_Calculate(&PID_Follow_Speed, PID_Follow_Angle.output, 0); //此处本质是为了让已有速度前馈下还存在的error进行一个速度小补偿，此处的速度环pid仅作scalar的作用并无反馈
+                vw += PID_Follow_Speed.output;
+            }
+
+        }else{
+            // 小陀螺
+            vw = swingSpeed;
+        }
 
         // 按条件开启底盘K_I
         if (vx < 0.1 && vy < 0.1 && vw < 0.3) {
@@ -444,8 +361,19 @@ void Task_Chassis(void *Parameters) {
             vwRampProgress += 0.002f;
         }
 
-        if(FastmoveMode == 1){
+        switch (moveMode)
+        {
+        case frictMove:
+            targetPower = ProtocolData.gameRobotstatus.chassis_power_limit;
+            break;
+        
+        case fastMove:
             targetPower = 240;
+            break;
+
+        default:
+            targetPower = 50;
+            break;
         }
 
         Chassis_Update(&ChassisData, vx, vy, vwRamp); // 更新麦轮转速
@@ -453,7 +381,6 @@ void Task_Chassis(void *Parameters) {
         Chassis_Calculate_Rotor_Speed(&ChassisData);  // 麦轮解算
 
 
-        Chassis_Calculate_Real_Speed(&ChassisData, realMotorSpeed);
         PID_Calculate(&PID_Fx, vx, ChassisData.realvx);
         PID_Calculate(&PID_Fy, vy, ChassisData.realvy);
         PID_Calculate(&PID_T, vwRamp, ChassisData.realvw);
@@ -625,9 +552,6 @@ void Task_Fire_Stir(void *Parameters) {
         // stirSpeed = 120; // 热量：360
 
         // X模式
-        if (FastShootMode) {
-            stirSpeed *= 1.5;
-        }
 
         //热量控制
         maxShootHeat = ProtocolData.gameRobotstatus.shooter_id1_17mm_cooling_limit - ProtocolData.gameRobotstatus.shooter_id1_17mm_speed_limit * 2;

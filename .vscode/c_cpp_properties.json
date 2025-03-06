@@ -3,7 +3,8 @@
     {
       "name": "windows-gcc-x64",
       "includePath": [
-        "${workspaceFolder}/**"
+        "${workspaceFolder}/**",
+        "template/library/CMSIS-DSP/1.14.2/Include/dsp"
       ],
       "defines": [
         "STM32F427_437xx",

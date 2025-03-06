@@ -61,7 +61,11 @@
     "handle.h": "c",
     "default_config.h": "c",
     "stm32f4xx.h": "c",
-    "cmath": "c"
+    "cmath": "c",
+    "driver_gyroscope.h": "c",
+    "arm_math.h": "c",
+    "arm_math_types.h": "c",
+    "driver_protocol.h": "c"
   },
   "C_Cpp.errorSquiggles": "disabled"
 }
