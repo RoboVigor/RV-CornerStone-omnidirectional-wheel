@@ -11,7 +11,6 @@
 #include "task.h"
 #include "queue.h"
 #include "vegmath.h"
-#include "arm_math.h"
 #include "Driver_BSP.h"
 #include "Driver_Filter.h"
 

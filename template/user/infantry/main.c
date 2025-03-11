@@ -11,7 +11,6 @@ int main(void) {
 
     //设置中断优先级位数
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
-    SystemInit();
     //调试相关
     Delay_Init(180); // 初始化延时
     LED_Init();      // 初始化LED

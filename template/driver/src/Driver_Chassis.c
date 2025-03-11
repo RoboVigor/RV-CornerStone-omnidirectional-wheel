@@ -170,7 +170,7 @@ void Chassis_Calculate_Power_Limit(float* motorCurrentOutput, int16_t* MCO_With_
             float DELTA, DELTA_SQRT;
             DELTA = b*b - 4*a*c;
             if(DELTA >= 0){
-                arm_sqrt_f32(DELTA, &DELTA_SQRT);
+                DELTA_SQRT = sqrt(DELTA);
                 float root1 = (-b + DELTA_SQRT)/(2*a);
                 float root2 = (-b - DELTA_SQRT)/(2*a);
                 if(root1 >0 && root1 <1 && root2 >0 && root2 <1){

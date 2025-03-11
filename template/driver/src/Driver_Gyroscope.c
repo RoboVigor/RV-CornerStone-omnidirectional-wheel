@@ -4,7 +4,6 @@
 #include "config.h"
 #include "MadgwickAHRS.h"
 #include "Driver_Gyroscope.h"
-#include "arm_math.h"
 
 static float          rollAngle;
 static float          pitchAngle;
@@ -197,15 +196,16 @@ void Gyroscope_Set_Bias(ImuData_Type *ImuData, int16_t gx_bias, int16_t gy_bias,
 
 void Gyroscope_axis_trans( float *ImuData_temp) {
     float transMatrix[9] = trans_matrix;
-    arm_matrix_instance_f32 matrixTrans;
-    arm_mat_init_f32(&matrixTrans, 3, 3, (float32_t *)transMatrix);
     #ifdef STM32F427_437xx
-        arm_matrix_instance_f32 ImuData_Src;
-        arm_matrix_instance_f32 ImuData_Dst;
         float ImuData_trans[2][3];
-        arm_mat_init_f32(&ImuData_Src, 2, 3, (float32_t *)ImuData_temp);
-        arm_mat_init_f32(&ImuData_Dst, 2, 3, (float32_t *)ImuData_trans);
-        arm_mat_mult_f32(&ImuData_Src, &matrixTrans, &ImuData_Dst);
+        for(int i =0; i< 2; i++) {
+            for(int j =0; j<3; j++){
+                ImuData_trans[i][j] = 0;
+                for(int k =0; k<3; k++){
+                    ImuData_trans[i][j] += (*(ImuData_temp + k + i * 3)) * transMatrix[j + k*3];
+                }
+            }
+        }
         xSpeed = ImuData_trans[0][0];
         ySpeed = ImuData_trans[0][1];
         zSpeed = ImuData_trans[0][2];
@@ -215,12 +215,15 @@ void Gyroscope_axis_trans( float *ImuData_temp) {
     #endif
 
     #ifdef STM32F40_41xxx
-        arm_matrix_instance_f32 ImuData_Src;
-        arm_matrix_instance_f32 ImuData_Dst;
         float ImuData_trans[3][3];
-        arm_mat_init_f32(&ImuData_Src, 3, 3, (float32_t *)ImuData_temp);
-        arm_mat_init_f32(&ImuData_Dst, 3, 3, (float32_t *)ImuData_trans);
-        arm_mat_mult_f32(&ImuData_Src, &matrixTrans, &ImuData_Dst);
+        for(int i =0; i< 3; i++) {
+            for(int j =0; j<3; j++){
+                ImuData_trans[i][j] = 0;
+                for(int k =0; k<3; k++){
+                    ImuData_trans[i][j] += (*(ImuData_temp + k + i * 3)) * transMatrix[j + k*3];
+                }
+            }
+        }
         xSpeed = ImuData_trans[0][0];
         ySpeed = ImuData_trans[0][1];
         zSpeed = ImuData_trans[0][2];
@@ -237,19 +240,19 @@ void Gyroscope_Calculate_angleSpeed(GyroscopeData_Type *gd, float yaw, float pit
     yaw *= PI/160;
     pitch *= PI/160;
     roll *= PI/160;
-    float32_t angleSpeed[3] = {xSpeed, ySpeed, zSpeed};
-    float32_t angleSpeed_trans[3];
-    float32_t transMatrix[9] = {cos(roll)*cos(yaw),cos(roll)*sin(yaw),-sin(roll), \
+    float angleSpeed[3] = {xSpeed, ySpeed, zSpeed};
+    float angleSpeed_trans[3];
+    float transMatrix[9] = {cos(roll)*cos(yaw),cos(roll)*sin(yaw),-sin(roll), \
                                 cos(yaw)*sin(pitch)*sin(roll) - cos(pitch)*sin(yaw), cos(pitch)*cos(yaw) + sin(pitch)*sin(roll)*sin(yaw), cos(roll)*sin(pitch), \
                                 sin(pitch)*sin(yaw) + cos(pitch)*cos(yaw)*sin(roll), cos(pitch)*sin(roll)*sin(yaw) - cos(yaw)*sin(pitch), cos(pitch)*cos(roll)};
-    arm_matrix_instance_f32 src;
-    arm_matrix_instance_f32 dst;
-    arm_matrix_instance_f32 trans;
-    arm_mat_init_f32(&src, 1, 3, angleSpeed);
-    arm_mat_init_f32(&dst, 1, 3, angleSpeed_trans);
-    arm_mat_init_f32(&trans, 3, 3, transMatrix);
-    arm_mat_mult_f32(&src, &trans, &dst);
+    for(int j =0; j<3; j++){
+        angleSpeed_trans[j] = 0;
+        for(int k =0; k<3; k++){
+            angleSpeed_trans[j] += angleSpeed[k] * transMatrix[j + k*3];
+        }
+    }
+    
     gd->pitchSpeed = angleSpeed_trans[0]* 160/PI;
     gd->rollSpeed = angleSpeed_trans[1]* 160/PI;
-    gd->yawSpeed = angleSpeed_trans[2]* 160/PI; //同yaw轴角度修改为顺势针为正
+    gd->yawSpeed = angleSpeed_trans[2]* 160/PI; 
 }
