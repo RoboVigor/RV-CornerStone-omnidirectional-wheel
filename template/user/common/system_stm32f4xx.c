@@ -323,7 +323,7 @@
 #endif /* STM32F40_41xxx || STM32F427_437xx || STM32F429_439xx || STM32F401xx */  
 
 /* USB OTG FS, SDIO and RNG Clock =  PLL_VCO / PLLQ */
-#define PLL_Q      7
+#define PLL_Q      9
 
 #if defined (STM32F40_41xxx)
 #define PLL_N      336
