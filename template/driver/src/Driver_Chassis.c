@@ -36,8 +36,8 @@ void Chassis_Fix(ChassisData_Type *cd, float angle) {
     float cosYaw = vegcos(angle); // 0
     float vx     = cd->vx;
     float vy     = cd->vy;
-    cd->vy       = vy * cosYaw - vx * sinYaw;
-    cd->vx       = vy * sinYaw + vx * cosYaw;
+    cd->vx       = vy * cosYaw - vx * sinYaw;
+    cd->vy       = vx * sinYaw + vy * cosYaw;
 }
 //此处运动学逆解已修改为全向轮地盘
 void Chassis_Calculate_Rotor_Speed(ChassisData_Type *cd) {
