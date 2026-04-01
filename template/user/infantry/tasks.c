@@ -381,8 +381,8 @@ void Task_Chassis(void *Parameters) {
         Chassis_Fix(&ChassisData, motorAngle);        // 修正旋转后底盘的前进方向
         Chassis_Calculate_Rotor_Speed(&ChassisData);  // 麦轮解算
 
-        PID_Calculate(&PID_Fx, vx, ChassisData.realvx);
-        PID_Calculate(&PID_Fy, vy, ChassisData.realvy);
+        PID_Calculate(&PID_Fx, ChassisData.vx, ChassisData.realvx);
+        PID_Calculate(&PID_Fy, ChassisData.vy, ChassisData.realvy);
         PID_Calculate(&PID_T, vwRamp, ChassisData.realvw);
         Chassis_Updata_FT(&ChassisData, PID_Fx.output, PID_Fy.output, PID_T.output);
         Chassis_Calculate_Rotor_Torgue(&ChassisData);
